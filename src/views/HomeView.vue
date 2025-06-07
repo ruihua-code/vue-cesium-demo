@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import * as Cesium from 'cesium'
 import { Viewer, Ion } from 'cesium'
+
 import 'cesium/Build/Cesium/Widgets/widgets.css'
 import FanModel from './model/Fan.js'
 import PlaneModel from './model/Plane.js'
@@ -13,7 +14,7 @@ const cesiumViewer = ref<Viewer | null>(null)
 const fanAngle = 0
 const entityFan = null
 const entityFanBar = null
-const planeModel = null
+let planeModel = null
 const planeAngle = 0
 
 const fans = []
@@ -56,9 +57,21 @@ const initMap = () => {
     },
     // 隐藏底部版权信息
     creditContainer: document.createElement('div'),
+    // terrain: Cesium.Terrain.fromWorldTerrain({
+    //   // 启用地形照明
+    //   requestVertexNormals: false,
+    //   // 水效果
+    //   requestWaterMask: true,
+    // }),
   }
 
   cesiumViewer.value = new Viewer('cesiumContainer', cesiumConfig)
+
+  // 启用地形照明
+  cesiumViewer.value.scene.globe.enableLighting = true
+  // 开启地形检测
+  cesiumViewer.value.scene.globe.depthTestAgainstTerrain = true
+
   // 显示fps
   cesiumViewer.value.scene.debugShowFramesPerSecond = true
 
@@ -117,7 +130,7 @@ const onCesiumClick = (movement) => {
       // },
       // })
 
-      add3DModel(lon, lat, 0)
+      addFanModel(lon, lat, 0)
     }
   }
 }
@@ -152,10 +165,10 @@ const addTianDiMap = () => {
 
   // 通过相机设备默认坐标位置
   cesiumViewer.value.camera.setView({
-    destination: Cesium.Cartesian3.fromDegrees(116.07, 40.05, 1000),
+    destination: Cesium.Cartesian3.fromDegrees(113.236305, 34.611076, 700),
     orientation: {
       heading: Cesium.Math.toRadians(0),
-      pitch: Cesium.Math.toRadians(-45),
+      pitch: Cesium.Math.toRadians(-15),
       roll: Cesium.Math.toRadians(0),
     },
   })
@@ -167,15 +180,21 @@ const addTianDiMap = () => {
   // cesiumViewer.value.imageryLayers.addImageryProvider(tdtLayer3)
   // cesiumViewer.value.imageryLayers.addImageryProvider(tdtLayer2)
 
-  // planeModel = new PlaneModel({
-  //   cesiumViewer: cesiumViewer.value,
-  // })
+  planeModel = new PlaneModel({
+    cesiumViewer: cesiumViewer.value,
+  })
 
-  // planeModel.add({ lon: 116.07, lat: 40.05, height: 1000 })
+  planeModel.add({ lon: 113.236305, lat: 34.611076, height: 400 })
   // planeModel.rotateLoop()
 }
 
-const add3DModel = (lon, lat, z) => {
+/**
+ * 在点击位置添加3D 风扇模型
+ * @param lon 经度
+ * @param lat 纬度
+ * @param z 高度(米)
+ */
+const addFanModel = (lon, lat, z) => {
   const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
     Cesium.Cartesian3.fromDegrees(lon, lat, 0),
   )
@@ -213,106 +232,15 @@ const add3DModel = (lon, lat, z) => {
     lat,
   })
 
-  // const center = getFansCenter(fans)
-  // const radius = 0.02 // 单位：度，实际距离可调整
-  // const height = 300 // 飞机飞行高度
-
-  // 动画：让飞机绕中心点飞行
-  // cesiumViewer.value.scene.postRender.addEventListener(() => {
-  //   console.log('postRender', planeModel)
-  //   if (!planeModel) return
-  //   planeAngle += 0.5 // 控制速度
-  //   if (planeAngle >= 360) planeAngle -= 360
-  //   const rad = Cesium.Math.toRadians(planeAngle)
-  //   const lon = center.lon + radius * Math.cos(rad)
-  //   const lat = center.lat + radius * Math.sin(rad)
-  //   const position = Cesium.Cartesian3.fromDegrees(lon, lat, height)
-  //   planeModel.position = position
-
-  //   // 让飞机头部始终朝向中心
-  //   const heading = Math.atan2(center.lon - lon, center.lat - lat)
-  //   planeModel.orientation = Cesium.Transforms.headingPitchRollQuaternion(
-  //     position,
-  //     new Cesium.HeadingPitchRoll(heading, 0, 0),
-  //   )
-  // })
-
-  console.log('planeModel', planeModel)
   // 移动飞机到点击位置
   if (planeModel && planeModel.entity) {
-    // const heading = getHeadingFromTo(planeModel.lon, planeModel.lat, lon, lat) - 90 - 180
-    // const fixedHeading = (heading + 360) % 360
-
-    // // 2. 先旋转飞机头部
-    // planeModel.entity.orientation = Cesium.Transforms.headingPitchRollQuaternion(
-    //   Cesium.Cartesian3.fromDegrees(planeModel.lon, planeModel.lat, planeModel.height || 0),
-    //   new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(fixedHeading), 0, 0),
-    // )
-
-    setTimeout(() => {
-      const start = planeModel.entity.position.getValue(Cesium.JulianDate.now())
-      const startCarto = Cesium.Cartographic.fromCartesian(start)
-      const startLon = Cesium.Math.toDegrees(startCarto.longitude)
-      const startLat = Cesium.Math.toDegrees(startCarto.latitude)
-      const startHeight = startCarto.height
-
-      const endLon = lon
-      const endLat = lat
-      const endHeight = 200 // 目标高度
-
-      const duration = 2000 // 2秒
-      const frameRate = 60
-      const totalFrames = (duration / 1000) * frameRate
-      let frame = 0
-
-      function animate() {
-        frame++
-        const t = Math.min(frame / totalFrames, 1)
-        // 线性插值
-        const currLon = startLon + (endLon - startLon) * t
-        const currLat = startLat + (endLat - startLat) * t
-        const currHeight = startHeight + (endHeight - startHeight) * t
-        planeModel.entity.position = Cesium.Cartesian3.fromDegrees(currLon, currLat, currHeight)
-
-        // 飞行过程中保持朝向目标
-        const movingHeading = getHeadingFromTo(currLon, currLat, endLon, endLat) - 90 - 180
-        // const fixedMovingHeading = (movingHeading + 360) % 360
-        planeModel.entity.orientation = Cesium.Transforms.headingPitchRollQuaternion(
-          Cesium.Cartesian3.fromDegrees(currLon, currLat, currHeight),
-          new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(movingHeading), 0, 0),
-        )
-
-        if (t < 1) {
-          requestAnimationFrame(animate)
-        }
-      }
-      animate()
-    }, 500) // 先旋转0.5秒再飞行
+    planeModel.flyToPosition(lon, lat, 300)
   }
-
-  console.log('fans', fans)
 
   // cesiumViewer.value.flyTo(fanModel.entity, {
   //   duration: 2,
   //   offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-45), 500),
   // })
-}
-
-const getHeadingFromTo = (startLon, startLat, endLon, endLat) => {
-  const toRad = Cesium.Math.toRadians
-  const dLon = toRad(endLon - startLon)
-  const lat1 = toRad(startLat)
-  const lat2 = toRad(endLat)
-  const y = Math.sin(dLon) * Math.cos(lat2)
-  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon)
-  let heading = Math.atan2(y, x)
-  heading = Cesium.Math.toDegrees(heading)
-  // 转为0-360度
-  return (heading + 360) % 360
-}
-
-const onFly = () => {
-  console.log('onFly')
 }
 </script>
 
