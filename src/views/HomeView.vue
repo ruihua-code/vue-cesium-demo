@@ -6,23 +6,22 @@ import 'cesium/Build/Cesium/Widgets/widgets.css'
 import FanModel from './model/Fan.js'
 import PlaneModel from './model/Plane.js'
 import { ref, onMounted } from 'vue'
+import shapefile from 'shapefile'
 
 Ion.defaultAccessToken =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4ZDMzMzA1OC0xYjkwLTQ0MjctOWI3Yi03OTZkZGQ0N2YxNWQiLCJpZCI6MjIwNTYyLCJpYXQiOjE3MTc2NjczMDB9.RL9K8o6b-YRvYa04LepguqE_snKArtjQdMUBPSTxVMo'
 
 const cesiumViewer = ref<Viewer | null>(null)
-const fanAngle = 0
-const entityFan = null
-const entityFanBar = null
-let planeModel = null
-const planeAngle = 0
+
+let planeModel: PlaneModel = null
 
 const fans = []
 onMounted(() => {
   initMap()
-  setTimeout(() => {
-    addTianDiMap()
-  }, 0)
+
+  addTianDiMap()
+
+  load3dTile()
 })
 
 const initMap = () => {
@@ -195,31 +194,6 @@ const addTianDiMap = () => {
  * @param z 高度(米)
  */
 const addFanModel = (lon, lat, z) => {
-  const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
-    Cesium.Cartesian3.fromDegrees(lon, lat, 0),
-  )
-  // entityFanBar = cesiumViewer.value.entities.add({
-  //   name: '3D Model',
-  //   position: Cesium.Cartesian3.fromDegrees(lon, lat, 0),
-
-  //   model: {
-  //     uri: '/3d/fan-bar.glb',
-  //     modelMatrix: modelMatrix,
-  //     scale: 5000.0,
-  //   },
-  // })
-
-  // entityFan = cesiumViewer.value.entities.add({
-  //   name: '3D Model fan',
-  //   position: Cesium.Cartesian3.fromDegrees(lon, lat, 70000),
-  //   model: {
-  //     uri: '/3d/fan.glb',
-  //     modelMatrix: modelMatrix,
-  //     scale: 5000.0,
-  //     color: Cesium.Color.WHITE, // 强制叠加白色
-  //   },
-  // })
-
   const fanModel = new FanModel({
     cesiumViewer: cesiumViewer.value,
   })
@@ -242,10 +216,23 @@ const addFanModel = (lon, lat, z) => {
   //   offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-45), 500),
   // })
 }
+
+// 加载3d Tiles
+const load3dTile = async () => {
+  const tileset = await Cesium.Cesium3DTileset.fromUrl('/tile/tileset.json')
+  cesiumViewer.value?.scene.primitives.add(tileset)
+
+  console.log('tiles:', tileset)
+
+  cesiumViewer.value?.flyTo(tileset, {
+    duration: 2,
+  })
+
+  // cesiumViewer.value?.zoomTo(tileset)
+}
 </script>
 
 <template>
-  <!-- <button class="btn-fly" @click="onFly">fly</button> -->
   <div class="map" id="cesiumContainer"></div>
 </template>
 
@@ -256,17 +243,5 @@ const addFanModel = (lon, lat, z) => {
   position: absolute;
   top: 0;
   left: 0;
-}
-
-.btn-fly {
-  z-index: 999;
-  position: absolute;
-  width: 100px;
-  line-height: 35px;
-  background-color: #3388ff;
-  color: #fff;
-  font-size: 16px;
-  cursor: pointer;
-  border: none;
 }
 </style>

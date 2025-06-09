@@ -42,6 +42,7 @@ class PlaneModel {
         uri: this.uri,
         scale: this.scale,
         customShader: customShader,
+        color: Cesium.Color.ORANGE,
       },
     })
   }
@@ -89,14 +90,32 @@ class PlaneModel {
       // 飞行过程中保持朝向目标
       let movingHeading
       if (t < 1) {
+        // 飞行中
         movingHeading = this.getHeadingFromTo(currLon, currLat, endLon, endLat) - 90 - 180
         const fixedMovingHeading = (movingHeading + 360) % 360
         this.entity.orientation = Cesium.Transforms.headingPitchRollQuaternion(
           Cesium.Cartesian3.fromDegrees(currLon, currLat, currHeight),
           new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(fixedMovingHeading), 0, 0),
         )
+
+        const distance = this.distance({
+          current: {
+            lon: currLon,
+            lat: currLat,
+            height: currHeight,
+          },
+          target: {
+            lon,
+            lat,
+            height,
+          },
+        })
+
+        console.log('距离:', distance)
         requestAnimationFrame(animate.bind(this))
       } else {
+        // 飞行结束
+
         // 飞行结束后，保持最后一帧的朝向，不再用目标点和自身点计算heading
         movingHeading = this.getHeadingFromTo(startLon, startLat, endLon, endLat) - 90 - 180
         const fixedMovingHeading = (movingHeading + 360) % 360
@@ -120,6 +139,24 @@ class PlaneModel {
     heading = Cesium.Math.toDegrees(heading)
     // 转为0-360度
     return (heading + 360) % 360
+  }
+
+  /**
+   * 检测两个经纬度的距离，单位米
+   * @param {*} positions
+   * @returns
+   */
+  distance(positions) {
+    const { target, current } = positions
+    const planePosition = Cesium.Cartesian3.fromDegrees(current.lon, current.lat, current.height)
+    const targetPosition = Cesium.Cartesian3.fromDegrees(target.lon, target.lat, target.height)
+    const distance = Cesium.Cartesian3.distance(planePosition, targetPosition)
+    return distance
+  }
+
+  findEntity() {
+    const entities = this.cesiumViewer.entities.values
+    console.log('entities：', entities)
   }
 }
 
