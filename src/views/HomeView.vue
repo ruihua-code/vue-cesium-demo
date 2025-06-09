@@ -21,7 +21,8 @@ onMounted(() => {
 
   addTianDiMap()
 
-  load3dTile()
+  // load3dTile()
+  loadGeojson()
 })
 
 const initMap = () => {
@@ -229,6 +230,25 @@ const load3dTile = async () => {
   })
 
   // cesiumViewer.value?.zoomTo(tileset)
+}
+
+const loadGeojson = async () => {
+  const json = await Cesium.GeoJsonDataSource.load('/geojson/zz.json')
+  cesiumViewer.value?.dataSources.add(json)
+
+  const entities = json.entities.values
+  console.log('entities:', entities)
+  for (let i = 0; i < entities.length; i++) {
+    const entity = entities[i]
+    // 只显示一个点
+    entity.billboard = undefined
+
+    if (entity.polygon) {
+      entity.polygon.height = 10 // 绝对高度，单位米
+      entity.polygon.extrudedHeight = 100 // 拉伸高度（如需立体效果）
+    }
+  }
+  cesiumViewer.value.zoomTo(json)
 }
 </script>
 
