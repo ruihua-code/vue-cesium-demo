@@ -6,7 +6,8 @@ import 'cesium/Build/Cesium/Widgets/widgets.css'
 import FanModel from './model/Fan.js'
 import PlaneModel from './model/Plane.js'
 import { ref, onMounted } from 'vue'
-import shapefile from 'shapefile'
+import GeoTIFF from 'geotiff'
+import { fromArrayBuffer } from 'geotiff'
 
 Ion.defaultAccessToken =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4ZDMzMzA1OC0xYjkwLTQ0MjctOWI3Yi03OTZkZGQ0N2YxNWQiLCJpZCI6MjIwNTYyLCJpYXQiOjE3MTc2NjczMDB9.RL9K8o6b-YRvYa04LepguqE_snKArtjQdMUBPSTxVMo'
@@ -20,9 +21,11 @@ onMounted(() => {
   initMap()
 
   addTianDiMap()
+  addAmap()
 
   // load3dTile()
-  loadGeojson()
+  // loadGeojson()
+  loadCesium3DtileTest()
 })
 
 const initMap = () => {
@@ -86,7 +89,7 @@ const onCesiumClick = (movement) => {
   if (Cesium.defined(pickedObject)) {
     console.log('Clicked on object:', pickedObject)
   } else {
-    console.log('Clicked on empty space')
+    console.log('Clicked on empty space', movement)
     // 添加一个圆
     const cartesian = cesiumViewer.value.scene.camera.pickEllipsoid(
       movement.position,
@@ -189,6 +192,21 @@ const addTianDiMap = () => {
 }
 
 /**
+ * 加载高德地图
+ */
+const addAmap = () => {
+  const url = 'https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}'
+  const provider = new Cesium.UrlTemplateImageryProvider({
+    url: url,
+    maximumLevel: 19, // 最大级别，根据实际情况调整
+    tilingScheme: new Cesium.WebMercatorTilingScheme(), // 通常使用Web Mercator投影
+    rectangle: Cesium.Rectangle.MAX_VALUE, // 覆盖整个地球的范围
+    subdomains: ['1', '2', '3'],
+  })
+  cesiumViewer.value.imageryLayers.addImageryProvider(provider)
+}
+
+/**
  * 在点击位置添加3D 风扇模型
  * @param lon 经度
  * @param lat 纬度
@@ -249,6 +267,40 @@ const loadGeojson = async () => {
     }
   }
   cesiumViewer.value.zoomTo(json)
+}
+
+// const loadGeoTif = () => {
+//   const imageryLayer = cesiumViewer.value.imageryLayers.addImageryProvider(
+//     new Cesium.UrlTemplateImageryProvider({
+//       url: '/tiff/ouput.tif', // 直接使用图像文件
+//     }),
+//   )
+
+//   cesiumViewer.value.imageryLayers.addImageryProvider(imageryLayer)
+
+//   cesiumViewer.value?.zoomTo(imageryLayer)
+// }
+
+const loadCesium3DtileTest = async () => {
+  const tileset = await Cesium.Cesium3DTileset.fromUrl(
+    '/3d-tiles/cesium-3d-tile-jinsefuyuan/tileset.json',
+  )
+  cesiumViewer.value?.scene.primitives.add(tileset)
+
+  // 设置颜色（全部变为红色，可自定义）
+  tileset.style = new Cesium.Cesium3DTileStyle({
+    color: "color('orange', 1)", // 0.7为透明度
+  })
+
+  const positionOffset = new Cesium.Cartesian3(50, 0, 0) // 单位：米（相对于原点）
+  const modelMatrix = Cesium.Matrix4.fromTranslation(positionOffset)
+
+  // 应用 modelMatrix 到 tileset
+  tileset.modelMatrix = modelMatrix
+
+  cesiumViewer.value?.flyTo(tileset, {
+    duration: 2,
+  })
 }
 </script>
 
